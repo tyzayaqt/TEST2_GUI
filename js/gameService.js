@@ -144,10 +144,18 @@ export function createGameService(eventBus) {
   function buildDeck() {
     // TODO (2):
     //   - Produce a flat array with each symbol appearing twice.
+   const deck = SYMBOLS.flatMap(symbol => [{ symbol }, { symbol }]);
     //   - Shuffle it using shuffle().
+    const shuffledDeck = shuffle(deck);
     //   - Map each entry to a Card object: { id, symbol, isFlipped, isMatched }.
     //   - `id` is the card's index in the final shuffled array.
     //   - Return the resulting array.
+    return shuffledDeck.map((symbol, index) => ({
+      id: index,
+      symbol: symbol,
+      isFlipped: false,
+      isMatched: false
+    }));
 
   }
 
