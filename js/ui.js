@@ -94,6 +94,29 @@ export function createUI(eventBus, gameService, rootEl) {
     //   - Build the nested .card-inner, .card-back, .card-front, <span>.
     //   - Set the span's textContent to card.symbol.
     //   - Return the button element.
+    const button = document.createElement('button');
+    button.className = 'card';
+    button.type = 'button';
+    button.dataset.cardId = card.id;
+
+    const inner = document.createElement('div');
+    inner.className = 'card-inner';
+
+    const back = document.createElement('div');
+    back.className = 'card-face card-back';
+
+    const front = document.createElement('div');
+    front.className = 'card-face card-front';
+
+    const span = document.createElement('span');
+    span.textContent = card.symbol;
+    
+    front.appendChild(span);
+    inner.appendChild(back);
+    inner.appendChild(front);
+    button.appendChild(inner);
+
+    return button;
 
   }
 
@@ -107,6 +130,7 @@ export function createUI(eventBus, gameService, rootEl) {
     //   - For each card, build its element and append.
     //   - For performance, build into a DocumentFragment first, then
     //     append the fragment once.
+    els.board.replaceChildren();
 
   }
 

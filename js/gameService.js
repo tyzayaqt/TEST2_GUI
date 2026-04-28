@@ -134,7 +134,7 @@ export function createGameService(eventBus) {
       [result[i], result[j]] = [result[j], result[i]];
     }
     //   - Return the shuffled clone.
-
+    return result;
   }
 
   /**
@@ -165,6 +165,7 @@ export function createGameService(eventBus) {
    */
   function getCardById(id) {
     // TODO (3): find and return the card with matching id, or undefined.
+    return state.cards.find(card => card.id === id);
 
   }
 
@@ -175,16 +176,28 @@ export function createGameService(eventBus) {
   function startTimer() {
     // TODO (4):
     //   - If a timer is already running, do nothing (guard against double-start).
+      if (state.timerId !== null) {
+        return;
+      }
     //   - Otherwise setInterval at TIMER_INTERVAL_MS that:
+    state.timerId = setInterval(() => {
     //       * increments state.elapsedSeconds
+      state.elapsedSeconds += 1;
     //       * emits 'game:timerTick' with { elapsedSeconds }
+      eventBus.emit('game:timerTick', { elapsedSeconds: state.elapsedSeconds });
     //   - Store the interval id in state.timerId.
+    }, TIMER_INTERVAL_MS);
+
 
   }
 
   function stopTimer() {
     // TODO (5):
     //   - If state.timerId is not null, clearInterval and set timerId = null.
+    if (state.timerId !== null) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
 
   }
 
@@ -199,11 +212,20 @@ export function createGameService(eventBus) {
   function start() {
     // TODO (6):
     //   - Stop any existing timer (in case start is called mid-game).
+      stopTimer();
     //   - Reset state to a fresh initial state.
+    state = createInitialState();
     //   - Populate state.cards with buildDeck().
+    state.cards = buildDeck();
     //   - Set state.status = 'playing'.
+    state.status = 'playing';
     //   - Emit 'game:started' with { cards: state.cards, totalPairs: TOTAL_PAIRS }.
+    eventBus.emit('game:started', { 
+      cards: state.cards,
+       totalPairs: TOTAL_PAIRS,
+     });
     //   - Call startTimer().
+    startTimer();
     //
     // IMPORTANT: emit 'game:started' BEFORE starting the timer, so the UI
     // has the board on-screen before the first tick arrives.
@@ -223,14 +245,48 @@ export function createGameService(eventBus) {
    */
   function flipCard(cardId) {
     // TODO (7): implement the full flip flow below.
-    //
     // STEP A — validate. Return early on any rejection rule above.
+    if (state.status !== 'playing' || state.isLocked) {
+      return;
+    }
+    const card = getCardById(cardId);
+    if (!card || card.isFlipped || card.isMatched || state.secondPickId !== null) {
+      return;
+    }
     //
     // STEP B — flip the card. Set its isFlipped = true and emit
+    card.isFlipped = true;
+    eventBus.emit('game:cardFlipped', { cardId: card.id,
+       symbol: card.symbol 
+      });
     //   'game:cardFlipped' with { cardId, symbol }.
     //
     // STEP C — decide which slot this pick fills.
+    if (state.firstPickId === null) {
+      state.firstPickId = cardId;
+    return;
+    }
+    state.secondPickId = cardId;
+    state.moves += 1;
+    eventBus.emit('game:moveCountChanged', { moves: state.moves });
+    const firstCard = getCardById(state.firstPickId);
+    const secondCard = getCardById(state.secondPickId);
     //
+    if (firstCard.symbol === secondCard.symbol) {
+      firstCard.isMatched = true;
+      secondCard.isMatched = true;
+      state.matchedCount += 2;
+
+      const firstId = state.firstPickId;
+      const secondId = state.secondPickId;
+
+      state.firstPickId = null;
+      state.secondPickId = null;
+      eventBus.emit('game:matchFound', { 
+        firstId, 
+        secondId, 
+        matchedCount: state.matchedCount 
+      });
     //   If firstPickId is null:
     //     * Set firstPickId = cardId. Done for this click.
     //
@@ -250,7 +306,32 @@ export function createGameService(eventBus) {
     //           * state.status = 'won'
     //           * stopTimer()
     //           * emit 'game:won' with { moves, elapsedSeconds }.
-    //
+    if (state.matchedCount === TOTAL_CARDS) {
+        state.status = 'won';
+        stopTimer();
+        eventBus.emit('game:won', { moves: state.moves, elapsedSeconds: state.elapsedSeconds });
+      }
+    } else {
+      state.isLocked = true;
+      const firstId = state.firstPickId;
+      const secondId = state.secondPickId;
+      eventBus.emit('game:matchFailed', { firstId, secondId });
+      
+      setTimeout(() => {
+        const first = getCardById(firstId);
+        const second = getCardById(secondId);
+        if (first) {
+          first.isFlipped = false;
+        }
+        if (second) {
+          second.isFlipped = false;
+        }
+        state.firstPickId = null;
+        state.secondPickId = null;
+        state.isLocked = false;
+      }
+      , FLIP_BACK_DELAY_MS);
+    }
     //     If they do NOT match:
     //       - Set state.isLocked = true so further clicks are ignored.
     //       - Emit 'game:matchFailed' with { firstId, secondId }.
@@ -272,7 +353,7 @@ export function createGameService(eventBus) {
    */
   function restart() {
     // TODO (8): call start(). That's it.
-
+    start();
   }
 
   /**
