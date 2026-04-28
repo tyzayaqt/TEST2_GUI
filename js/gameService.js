@@ -127,8 +127,12 @@ export function createGameService(eventBus) {
   function shuffle(arr) {
     // TODO (1): implement a pure Fisher–Yates shuffle.
     //   - Clone the input array first (do not mutate the argument).
+    const result = [...arr];
     //   - Iterate from the end down to index 1.
-    //   - Swap each element with a random earlier element (inclusive).
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
     //   - Return the shuffled clone.
 
   }
