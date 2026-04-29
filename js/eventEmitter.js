@@ -38,7 +38,7 @@
 export function createEventEmitter() {
   // TODO (1): create the private listeners store here.
   //           It should be an object mapping event name → array of listeners.
-  const listeners = {};
+  const listeners = new Map();
 
 
   function on(eventName, listener) {
@@ -50,10 +50,10 @@ export function createEventEmitter() {
   if (typeof listener !== 'function') {
     throw new TypeError('Listener must be a function');
   }
-  if (!listeners[eventName]) {
-    listeners[eventName] = [];
+  if (!listeners.has(eventName)) {
+    listeners.set(eventName, []);
   }
-  listeners[eventName].push(listener);
+  listeners.get(eventName).push(listener);
   }
 
   function off(eventName, listener) {
@@ -62,10 +62,10 @@ export function createEventEmitter() {
     //   - Otherwise remove ONLY the matching listener reference.
     //   - Do not mutate the array in place in a way that breaks a
     //     concurrent `emit` iteration — filter into a new array instead.
-  if (!listeners[eventName]) {
+  if (!listeners.has(eventName)) {
   return;
 }
-  listeners[eventName] = listeners[eventName].filter(fn => fn !== listener);
+  listeners.set(eventName, listeners.get(eventName).filter(fn => fn !== listener));
   }
 
   function emit(eventName, payload) {
@@ -74,10 +74,10 @@ export function createEventEmitter() {
     //   - Otherwise call every listener with `payload`.
     //   - Wrap each call in a try/catch so one bad listener does not
     //     break the others. Log errors with console.error.
-    if (!listeners[eventName]) {
+    if (!listeners.has(eventName)) {
       return;
     }
-    listeners[eventName].forEach(cb => {
+    listeners.get(eventName).forEach(cb => {
       try {
         cb(payload);
       } catch (error) {
